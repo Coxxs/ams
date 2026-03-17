@@ -19,16 +19,29 @@ on:
         required: false
         default: ''
 
+# Default SHAs applied to all triggers (push, PR, manual).
+# Set a SHA here when you need cutting-edge for a period, commit it,
+# and clear it when you're done.  workflow_dispatch inputs override these.
+env:
+  LIBNX_REV: '7644c9b26099aa2d2145bc72a21ee24190e92085'
+  HACTOOL_REV: '1d64a83450e025622f3468c28fc4164dad2c5ef6'
+  SWITCH_TOOLS_REV: '22756068dd0ed6ff9734c59cb4f99ebd3f62555b'
+
 jobs:
   build:
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkita64:20260202
+    env:
+      # Resolve: workflow_dispatch input wins, otherwise fall back to the default env above
+      RESOLVED_LIBNX_REV: ${{ inputs.libnx_rev || env.LIBNX_REV }}
+      RESOLVED_HACTOOL_REV: ${{ inputs.hactool_rev || env.HACTOOL_REV }}
+      RESOLVED_SWITCH_TOOLS_REV: ${{ inputs.switch_tools_rev || env.SWITCH_TOOLS_REV }}
     steps:
       - name: Install dependencies
         run: |
           apt-get update && apt-get install -y --no-install-recommends \
-            gcc python3-lz4 python3-pip automake liblz4-dev
+            gcc python3-lz4 python3-pip automake liblz4-dev zlib1g-dev
           ln -fs /usr/bin/python3 /usr/bin/python
           dkp-pacman -Syu --noconfirm
           dkp-pacman -S --noconfirm --needed \
@@ -36,39 +49,39 @@ jobs:
             devkitARM devkitarm-rules hactool
 
       - name: Build hactool from source
-        if: inputs.hactool_rev != ''
+        if: env.RESOLVED_HACTOOL_REV != ''
         run: |
           cd /tmp
           git clone --depth 1 https://github.com/SciresM/hactool.git
           cd hactool
-          git fetch --depth 1 origin ${{ inputs.hactool_rev }}
-          git checkout ${{ inputs.hactool_rev }}
+          git fetch --depth 1 origin $RESOLVED_HACTOOL_REV
+          git checkout $RESOLVED_HACTOOL_REV
           cp config.mk.template config.mk
           make -j$(nproc)
           cp hactool /opt/devkitpro/tools/bin/hactool
 
       - name: Build switch-tools from source
-        if: inputs.switch_tools_rev != ''
+        if: env.RESOLVED_SWITCH_TOOLS_REV != ''
         run: |
           cd /tmp
           git clone --depth 1 https://github.com/switchbrew/switch-tools.git
           cd switch-tools
-          git fetch --depth 1 origin ${{ inputs.switch_tools_rev }}
-          git checkout ${{ inputs.switch_tools_rev }}
+          git fetch --depth 1 origin $RESOLVED_SWITCH_TOOLS_REV
+          git checkout $RESOLVED_SWITCH_TOOLS_REV
           ./autogen.sh && ./configure
           make -j$(nproc)
           make install prefix=/opt/devkitpro/tools
 
       - name: Build libnx from source
-        if: inputs.libnx_rev != ''
+        if: env.RESOLVED_LIBNX_REV != ''
         env:
           DEVKITPRO: /opt/devkitpro
         run: |
           cd /tmp
           git clone --depth 1 https://github.com/switchbrew/libnx.git
           cd libnx
-          git fetch --depth 1 origin ${{ inputs.libnx_rev }}
-          git checkout ${{ inputs.libnx_rev }}
+          git fetch --depth 1 origin $RESOLVED_LIBNX_REV
+          git checkout $RESOLVED_LIBNX_REV
           make -j$(nproc)
           make install DESTDIR=/opt/devkitpro/libnx
 
