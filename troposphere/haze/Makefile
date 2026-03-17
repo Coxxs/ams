@@ -177,7 +177,7 @@ endif
 #---------------------------------------------------------------------------------
 all: $(ROMFS_TARGETS) | $(BUILD)
 
-$(BUILD):
+$(BUILD): $(ROMFS_TARGETS)
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
