@@ -19,7 +19,7 @@ jobs:
             gcc python3-lz4 python3-pip automake liblz4-dev
           ln -fs /usr/bin/python3 /usr/bin/python
           dkp-pacman -Syu --noconfirm
-          dkp-pacman -S --noconfirm \
+          dkp-pacman -S --noconfirm --needed \
             switch-dev switch-glm switch-libjpeg-turbo switch-tools \
             devkitARM devkitarm-rules hactool
 
