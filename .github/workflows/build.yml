@@ -1,0 +1,95 @@
+name: Build Atmosphère
+
+on:
+  push:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      libnx_rev:
+        description: 'libnx Git commit SHA (optional)'
+        required: false
+        default: ''
+      hactool_rev:
+        description: 'hactool Git commit SHA (optional)'
+        required: false
+        default: ''
+      switch_tools_rev:
+        description: 'switch-tools Git commit SHA (optional)'
+        required: false
+        default: ''
+
+# Set a SHA to build from source; leave '' for pacman version.
+env:
+  LIBNX_REV: ${{ inputs.libnx_rev || '' }}
+  HACTOOL_REV: ${{ inputs.hactool_rev || '' }}
+  SWITCH_TOOLS_REV: ${{ inputs.switch_tools_rev || '' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:20260202
+    steps:
+      - name: Install dependencies
+        run: |
+          apt-get update && apt-get install -y --no-install-recommends \
+            gcc python3-lz4 python3-pip automake liblz4-dev zlib1g-dev
+          ln -fs /usr/bin/python3 /usr/bin/python
+
+          dkp-pacman -Syu --noconfirm
+          dkp-pacman -S --noconfirm --needed \
+            switch-dev switch-glm switch-libjpeg-turbo switch-tools \
+            devkitARM devkitarm-rules hactool
+
+      - name: Build hactool from source
+        if: env.HACTOOL_REV != ''
+        run: |
+          mkdir /tmp/hactool && cd /tmp/hactool
+          git init
+          git remote add origin https://github.com/SciresM/hactool.git
+          git fetch --depth 1 origin $HACTOOL_REV
+          git checkout FETCH_HEAD
+          cp config.mk.template config.mk
+          make -j$(nproc)
+          cp hactool /opt/devkitpro/tools/bin/hactool
+
+      - name: Build switch-tools from source
+        if: env.SWITCH_TOOLS_REV != ''
+        run: |
+          mkdir /tmp/switch-tools && cd /tmp/switch-tools
+          git init
+          git remote add origin https://github.com/switchbrew/switch-tools.git
+          git fetch --depth 1 origin $SWITCH_TOOLS_REV
+          git checkout FETCH_HEAD
+          ./autogen.sh && ./configure
+          make -j$(nproc)
+          make install prefix=/opt/devkitpro/tools
+
+      - name: Build libnx from source
+        if: env.LIBNX_REV != ''
+        env:
+          DEVKITPRO: /opt/devkitpro
+        run: |
+          mkdir /tmp/libnx && cd /tmp/libnx
+          git init
+          git remote add origin https://github.com/switchbrew/libnx.git
+          git fetch --depth 1 origin $LIBNX_REV
+          git checkout FETCH_HEAD
+          make -j$(nproc)
+          make install DESTDIR=/opt/devkitpro/libnx
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Fix git ownership
+        run: git config --global --add safe.directory '*'
+
+      - name: Build
+        run: make -j$(nproc)
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: atmosphere-build
+          path: out/
