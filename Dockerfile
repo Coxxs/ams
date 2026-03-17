@@ -1,7 +1,8 @@
 FROM devkitpro/devkita64:20260202
 
-RUN apt update && \
-    apt install gcc python3-lz4 python3-pip automake liblz4-dev sudo -y && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        gcc python3-lz4 python3-pip automake liblz4-dev sudo && \
     ln -fs /usr/bin/python3 /usr/bin/python && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/* /usr/share/doc /usr/share/man
 
@@ -34,7 +35,16 @@ RUN apt update && \
 #     make install prefix=/opt/devkitpro/tools && \
 #     cd /tmp && \
 #     rm -rf /tmp/switch-tools
-RUN dkp-pacman -S switch-tools hactool --noconfirm && dkp-pacman -Syu --noconfirm
+
+RUN dkp-pacman -Syu --noconfirm && \
+    dkp-pacman -S --noconfirm \
+        switch-dev \
+        switch-glm \
+        switch-libjpeg-turbo \
+        switch-tools \
+        devkitARM \
+        devkitarm-rules \
+        hactool
 
 # Install libnx from Git (optional)
 # ENV LIBNX_REV=7644c9b26099aa2d2145bc72a21ee24190e92085
@@ -54,9 +64,8 @@ RUN dkp-pacman -S switch-tools hactool --noconfirm && dkp-pacman -Syu --noconfir
 
 RUN useradd -m atmosphere && \
     echo "atmosphere ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/atmosphere && \
-    chmod 0440 /etc/sudoers.d/atmosphere && \
-    echo "atmosphere:atmosphere" | chpasswd && \
-    usermod -aG sudo atmosphere
+    chmod 0440 /etc/sudoers.d/atmosphere
 
 USER atmosphere
+WORKDIR /home/atmosphere
 CMD ["/bin/bash"]
