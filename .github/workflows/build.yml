@@ -7,15 +7,15 @@ on:
   workflow_dispatch:
     inputs:
       libnx_rev:
-        description: 'libnx Git commit SHA (leave empty for pacman version)'
+        description: 'libnx Git commit SHA (optional)'
         required: false
         default: ''
       hactool_rev:
-        description: 'hactool Git commit SHA (leave empty for pacman version)'
+        description: 'hactool Git commit SHA (optional)'
         required: false
         default: ''
       switch_tools_rev:
-        description: 'switch-tools Git commit SHA (leave empty for pacman version)'
+        description: 'switch-tools Git commit SHA (optional)'
         required: false
         default: ''
 
@@ -23,9 +23,9 @@ on:
 # Set a SHA here when you need cutting-edge for a period, commit it,
 # and clear it when you're done.  workflow_dispatch inputs override these.
 env:
-  LIBNX_REV: '7644c9b26099aa2d2145bc72a21ee24190e92085'
-  HACTOOL_REV: '1d64a83450e025622f3468c28fc4164dad2c5ef6'
-  SWITCH_TOOLS_REV: '22756068dd0ed6ff9734c59cb4f99ebd3f62555b'
+  LIBNX_REV: ${{ inputs.libnx_rev || '7644c9b26099aa2d2145bc72a21ee24190e92085' }}
+  HACTOOL_REV: ${{ inputs.hactool_rev || '1d64a83450e025622f3468c28fc4164dad2c5ef6' }}
+  SWITCH_TOOLS_REV: ${{ inputs.switch_tools_rev || '22756068dd0ed6ff9734c59cb4f99ebd3f62555b' }}
 
 jobs:
   build:
@@ -33,19 +33,6 @@ jobs:
     container:
       image: devkitpro/devkita64:20260202
     steps:
-      - name: Resolve dependency versions
-        run: |
-          # workflow_dispatch inputs override the workflow-level env defaults
-          if [ -n "${{ inputs.libnx_rev }}" ]; then
-            echo "LIBNX_REV=${{ inputs.libnx_rev }}" >> $GITHUB_ENV
-          fi
-          if [ -n "${{ inputs.hactool_rev }}" ]; then
-            echo "HACTOOL_REV=${{ inputs.hactool_rev }}" >> $GITHUB_ENV
-          fi
-          if [ -n "${{ inputs.switch_tools_rev }}" ]; then
-            echo "SWITCH_TOOLS_REV=${{ inputs.switch_tools_rev }}" >> $GITHUB_ENV
-          fi
-
       - name: Install dependencies
         run: |
           apt-get update && apt-get install -y --no-install-recommends \
