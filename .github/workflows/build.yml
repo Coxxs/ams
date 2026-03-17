@@ -1,0 +1,35 @@
+name: Build Atmosphère
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:20260202
+    steps:
+      - name: Install dependencies
+        run: |
+          apt-get update && apt-get install -y --no-install-recommends \
+            gcc python3-lz4 python3-pip automake liblz4-dev
+          ln -fs /usr/bin/python3 /usr/bin/python
+          dkp-pacman -Syu --noconfirm
+          dkp-pacman -S --noconfirm \
+            switch-dev switch-glm switch-libjpeg-turbo switch-tools \
+            devkitARM devkitarm-rules hactool
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: make -j$(nproc)
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: atmosphere-build
+          path: out/
