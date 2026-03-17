@@ -5,6 +5,19 @@ on:
   pull_request:
     branches: [master]
   workflow_dispatch:
+    inputs:
+      libnx_rev:
+        description: 'libnx Git commit SHA (leave empty for pacman version)'
+        required: false
+        default: ''
+      hactool_rev:
+        description: 'hactool Git commit SHA (leave empty for pacman version)'
+        required: false
+        default: ''
+      switch_tools_rev:
+        description: 'switch-tools Git commit SHA (leave empty for pacman version)'
+        required: false
+        default: ''
 
 jobs:
   build:
@@ -21,6 +34,43 @@ jobs:
           dkp-pacman -S --noconfirm --needed \
             switch-dev switch-glm switch-libjpeg-turbo switch-tools \
             devkitARM devkitarm-rules hactool
+
+      - name: Build hactool from source
+        if: inputs.hactool_rev != ''
+        run: |
+          cd /tmp
+          git clone --depth 1 https://github.com/SciresM/hactool.git
+          cd hactool
+          git fetch --depth 1 origin ${{ inputs.hactool_rev }}
+          git checkout ${{ inputs.hactool_rev }}
+          cp config.mk.template config.mk
+          make -j$(nproc)
+          cp hactool /opt/devkitpro/tools/bin/hactool
+
+      - name: Build switch-tools from source
+        if: inputs.switch_tools_rev != ''
+        run: |
+          cd /tmp
+          git clone --depth 1 https://github.com/switchbrew/switch-tools.git
+          cd switch-tools
+          git fetch --depth 1 origin ${{ inputs.switch_tools_rev }}
+          git checkout ${{ inputs.switch_tools_rev }}
+          ./autogen.sh && ./configure
+          make -j$(nproc)
+          make install prefix=/opt/devkitpro/tools
+
+      - name: Build libnx from source
+        if: inputs.libnx_rev != ''
+        env:
+          DEVKITPRO: /opt/devkitpro
+        run: |
+          cd /tmp
+          git clone --depth 1 https://github.com/switchbrew/libnx.git
+          cd libnx
+          git fetch --depth 1 origin ${{ inputs.libnx_rev }}
+          git checkout ${{ inputs.libnx_rev }}
+          make -j$(nproc)
+          make install DESTDIR=/opt/devkitpro/libnx
 
       - name: Checkout
         uses: actions/checkout@v6
