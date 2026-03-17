@@ -38,8 +38,27 @@ jobs:
           apt-get update && apt-get install -y --no-install-recommends \
             gcc python3-lz4 python3-pip automake liblz4-dev zlib1g-dev
           ln -fs /usr/bin/python3 /usr/bin/python
-          dkp-pacman -Syu --noconfirm
-          dkp-pacman -S --noconfirm --needed \
+
+          retry() {
+            local n=0
+            local max=5
+            local delay=3
+            while true; do
+              "$@" && break || {
+                n=$((n + 1))
+                if [ $n -ge $max ]; then
+                  echo "Failed after $max attempts"
+                  return 1
+                fi
+                echo "Attempt $n/$max failed, retrying in ${delay}s..."
+                sleep $delay
+                delay=$((delay * 2))
+              }
+            done
+          }
+
+          retry dkp-pacman -Syu --noconfirm
+          retry dkp-pacman -S --noconfirm --needed \
             switch-dev switch-glm switch-libjpeg-turbo switch-tools \
             devkitARM devkitarm-rules hactool
 
