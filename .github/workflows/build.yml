@@ -29,7 +29,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: devkitpro/devkita64:20260202
+      image: devkitpro/devkita64
     steps:
       - name: Install dependencies
         run: |
